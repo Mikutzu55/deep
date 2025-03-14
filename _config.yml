@@ -1,5 +1,6 @@
 exclude:
   - node_modules
+  - backend/node_modules
   - package.json
   - package-lock.json
   - .github
