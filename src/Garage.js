@@ -15,6 +15,7 @@ import {
   Accordion,
   Form,
   Badge,
+  Collapse,
 } from 'react-bootstrap';
 import {
   FaCar,
@@ -35,6 +36,8 @@ import {
   FaCarCrash,
   FaFile,
   FaChartLine,
+  FaLock,
+  FaArrowRight,
 } from 'react-icons/fa';
 import { Line, Radar } from 'react-chartjs-2';
 import {
@@ -50,10 +53,10 @@ import {
   ArcElement,
   RadialLinearScale,
 } from 'chart.js';
-import CarModel from './components/CarModel'; // Import the CarModel component
 import './styles.css';
 import jsPDF from 'jspdf'; // For PDF generation
 import emailjs from 'emailjs-com'; // For sending emails
+import axios from 'axios'; // For API calls
 
 // Register Chart.js components
 ChartJS.register(
@@ -72,6 +75,34 @@ ChartJS.register(
 // Initialize EmailJS with your User ID
 emailjs.init('1y9guBsGcLO0pgE-Q'); // Replace with your EmailJS User ID
 
+// Data for Mileage Over Time graph
+const mileageData = (vehicle) => ({
+  labels: vehicle?.titleRecords?.map((record) => record.date) || [],
+  datasets: [
+    {
+      label: 'Mileage Over Time',
+      data: vehicle?.titleRecords?.map((record) => record.mileage) || [],
+      borderColor: '#00ffcc',
+      backgroundColor: 'rgba(0, 255, 204, 0.2)',
+    },
+  ],
+});
+
+// Data for Problem Checks radar chart
+const problemChecksData = (vehicle) => ({
+  labels: Object.keys(vehicle?.problemChecks || {}),
+  datasets: [
+    {
+      label: 'Problem Checks',
+      data: Object.values(vehicle?.problemChecks || {}).map((val) =>
+        val === 'No problems found!' ? 0 : 1
+      ),
+      backgroundColor: 'rgba(255, 99, 132, 0.2)',
+      borderColor: 'rgba(255, 99, 132, 1)',
+    },
+  ],
+});
+
 const Garage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -82,14 +113,19 @@ const Garage = () => {
   const [showModal, setShowModal] = useState(false); // For lightbox
   const [compareMode, setCompareMode] = useState(false); // For compare mode
   const [selectedForCompare, setSelectedForCompare] = useState([]); // Cars selected for comparison
+  const [showSearchBar, setShowSearchBar] = useState(false); // For search bar visibility
+  const [searchLoading, setSearchLoading] = useState(false); // For search bar loading state
+  const [searchError, setSearchError] = useState(''); // For search bar errors
+  const [userRole, setUserRole] = useState('free'); // Track user role
 
-  // Fetch garage data on component mount
+  // Fetch garage data and user role on component mount
   useEffect(() => {
     const fetchGarageData = async () => {
       try {
         const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
         if (userDoc.exists()) {
           setVehicles(userDoc.data().garage || []);
+          setUserRole(userDoc.data().membership || 'free');
         }
         setLoading(false);
       } catch (err) {
@@ -106,39 +142,31 @@ const Garage = () => {
     if (location.state?.vehicle) {
       const handleAddVehicle = async () => {
         try {
-          // Clear location.state immediately to prevent re-triggering
           const vehicleToAdd = location.state.vehicle;
           navigate('/garage', { replace: true, state: null });
 
-          // Check if the vehicle already exists in Firestore
           const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
           const currentVehicles = userDoc.data()?.garage || [];
           const vehicleExists = currentVehicles.some(
             (v) => v.vin === vehicleToAdd.vin
           );
+
           if (vehicleExists) {
             setError('This vehicle is already in your garage.');
             return;
           }
+
           if (currentVehicles.length >= 20) {
             setError('Maximum of 20 cars allowed in the garage.');
             return;
           }
 
-          // Add the new vehicle to Firestore using arrayUnion
           await updateDoc(doc(db, 'users', auth.currentUser.uid), {
             garage: arrayUnion(vehicleToAdd),
           });
 
-          // Fetch the updated garage from Firestore
-          const updatedUserDoc = await getDoc(
-            doc(db, 'users', auth.currentUser.uid)
-          );
-          const updatedVehicles = updatedUserDoc.data().garage || [];
-
-          // Update local state with the fetched data
-          setVehicles(updatedVehicles);
-          setError(''); // Clear any previous errors
+          setVehicles([...currentVehicles, vehicleToAdd]); // Update local state immediately
+          setError('');
         } catch (err) {
           console.error('Error updating garage:', err);
           setError('Failed to update garage.');
@@ -149,6 +177,180 @@ const Garage = () => {
     }
   }, [location.state]);
 
+  // Handle VIN search from the search bar
+  const handleVINSearch = async (vin) => {
+    setSearchLoading(true);
+    setSearchError('');
+    try {
+      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      const userData = userDoc.data();
+      let apiType = 'nhtsa'; // Default to NHTSA API for free users or unauthenticated users
+
+      // Check if the user is logged in and has a paid membership
+      if (
+        userData &&
+        (userData.membership === 'premium' ||
+          userData.membership === 'business')
+      ) {
+        apiType = 'clearvin'; // Use ClearVIN API for paid members
+      }
+
+      if (apiType === 'nhtsa') {
+        // Use NHTSA API for free users or unauthenticated users
+        const response = await axios.get(
+          `https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`
+        );
+
+        if (response.data.Count > 0) {
+          const vehicleData = {
+            make:
+              response.data.Results.find((r) => r.Variable === 'Make')?.Value ||
+              'N/A',
+            model:
+              response.data.Results.find((r) => r.Variable === 'Model')
+                ?.Value || 'N/A',
+            year:
+              response.data.Results.find((r) => r.Variable === 'Model Year')
+                ?.Value || 'N/A',
+            vin: vin,
+            registrationStatus: 'Active',
+            mileage: 0,
+            specifications: {
+              make:
+                response.data.Results.find((r) => r.Variable === 'Make')
+                  ?.Value || 'N/A',
+              model:
+                response.data.Results.find((r) => r.Variable === 'Model')
+                  ?.Value || 'N/A',
+              year:
+                response.data.Results.find((r) => r.Variable === 'Model Year')
+                  ?.Value || 'N/A',
+              trim:
+                response.data.Results.find((r) => r.Variable === 'Trim')
+                  ?.Value || 'N/A',
+              madeIn:
+                response.data.Results.find(
+                  (r) => r.Variable === 'Plant Country'
+                )?.Value || 'N/A',
+              engine:
+                response.data.Results.find((r) => r.Variable === 'Engine Model')
+                  ?.Value || 'N/A',
+              style:
+                response.data.Results.find((r) => r.Variable === 'Body Class')
+                  ?.Value || 'N/A',
+              fuelCapacity:
+                response.data.Results.find(
+                  (r) => r.Variable === 'Fuel Capacity'
+                )?.Value || 'N/A',
+              cityMileage:
+                response.data.Results.find((r) => r.Variable === 'City MPG')
+                  ?.Value || 'N/A',
+              msrp:
+                response.data.Results.find((r) => r.Variable === 'Base MSRP')
+                  ?.Value || 'N/A',
+            },
+            titleRecords: [],
+            junkSalvageRecords: [],
+            saleRecords: [],
+            problemChecks: {
+              floodDamage: 'No problems found!',
+              fireDamage: 'No problems found!',
+              hailDamage: 'No problems found!',
+              saltWaterDamage: 'No problems found!',
+              vandalism: 'No problems found!',
+              rebuilt: 'No problems found!',
+              salvageDamage: 'No problems found!',
+            },
+          };
+          navigate('/garage', { state: { vehicle: vehicleData } });
+        } else {
+          setSearchError('No data found for this VIN.');
+        }
+      } else if (apiType === 'clearvin') {
+        const response = await axios.get(
+          `http://localhost:5000/api/clearvin?vin=${vin}`
+        );
+        console.log('ClearVIN API Response:', response.data); // Debugging line
+
+        const result = response.data; // Renamed from data to result
+
+        if (result.vehicle) {
+          const vehicleData = {
+            ...result.vehicle, // Spread operator to include all fields from result.vehicle
+            vin: vin, // Ensure VIN is explicitly set
+            registrationStatus: 'Active',
+            mileage: 0,
+            specifications: {
+              make: result.vehicle.make || 'N/A',
+              model: result.vehicle.model || 'N/A',
+              year: result.vehicle.year || 'N/A',
+              trim: result.vehicle.trim || 'N/A',
+              madeIn: result.vehicle.madeIn || 'N/A',
+              engine: result.vehicle.engine || 'N/A',
+              style: result.vehicle.style || 'N/A',
+              invoicePrice: result.vehicle.invoice || 'N/A',
+              msrp: result.vehicle.msrp || 'N/A',
+            },
+            titleRecords: result.vehicle.titleRecords || [],
+            junkSalvageRecords: result.vehicle.junkSalvageRecords || [],
+            saleRecords: result.vehicle.saleRecords || [],
+            problemChecks: {
+              floodDamage:
+                result.vehicle.problemChecks?.floodDamage ||
+                'No problems found!',
+              fireDamage:
+                result.vehicle.problemChecks?.fireDamage ||
+                'No problems found!',
+              hailDamage:
+                result.vehicle.problemChecks?.hailDamage ||
+                'No problems found!',
+              saltWaterDamage:
+                result.vehicle.problemChecks?.saltWaterDamage ||
+                'No problems found!',
+              vandalism:
+                result.vehicle.problemChecks?.vandalism || 'No problems found!',
+              rebuilt:
+                result.vehicle.problemChecks?.rebuilt || 'No problems found!',
+              salvageDamage:
+                result.vehicle.problemChecks?.salvageDamage ||
+                'No problems found!',
+            },
+            recalls: result.vehicle.recalls
+              ? result.vehicle.recalls.map((recall) => ({
+                  summary: recall.Summary || 'No summary available',
+                  component: recall.Component || 'No component specified',
+                  consequence: recall.Consequence || 'No consequence specified',
+                  remedy: recall.Remedy || 'No remedy specified',
+                  notes: recall.Notes || 'No notes available',
+                  manufacturer:
+                    recall.Manufacturer || 'No manufacturer specified',
+                  reportReceivedDate:
+                    recall.ReportReceivedDate || 'No date specified',
+                  nhtsaCampaignNumber:
+                    recall.NHTSACampaignNumber ||
+                    'No campaign number specified',
+                }))
+              : [],
+            emissionSafetyInspections:
+              result.vehicle.emissionSafetyInspections || [],
+            accidentDamageHistory: result.vehicle.accidentDamageHistory || [],
+            lienImpoundRecords: result.vehicle.lienImpoundRecords || [],
+          };
+          console.log('Vehicle Data:', vehicleData); // Debugging line
+          navigate('/garage', { state: { vehicle: vehicleData } });
+        } else {
+          setSearchError('No data found for this VIN using ClearVIN API.');
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err.message);
+      setSearchError('Failed to fetch data. Please try again.');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // Handle removing a vehicle
   const handleRemoveVehicle = async (index) => {
     try {
       const updatedVehicles = vehicles.filter((_, i) => i !== index);
@@ -161,34 +363,6 @@ const Garage = () => {
       setError('Failed to remove vehicle.');
     }
   };
-
-  // Data for Mileage Over Time graph
-  const mileageData = (vehicle) => ({
-    labels: vehicle?.titleRecords?.map((record) => record.date) || [],
-    datasets: [
-      {
-        label: 'Mileage Over Time',
-        data: vehicle?.titleRecords?.map((record) => record.mileage) || [],
-        borderColor: '#00ffcc',
-        backgroundColor: 'rgba(0, 255, 204, 0.2)',
-      },
-    ],
-  });
-
-  // Data for Problem Checks radar chart
-  const problemChecksData = (vehicle) => ({
-    labels: Object.keys(vehicle?.problemChecks || {}),
-    datasets: [
-      {
-        label: 'Problem Checks',
-        data: Object.values(vehicle?.problemChecks || {}).map((val) =>
-          val === 'No problems found!' ? 0 : 1
-        ),
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        borderColor: 'rgba(255, 99, 132, 1)',
-      },
-    ],
-  });
 
   // Lightbox for car details
   const handleShowModal = (vehicle) => {
@@ -252,13 +426,11 @@ const Garage = () => {
     );
     doc.text(`VIN: ${vehicle.vin}`, 10, 20);
     doc.text(`Registration Status: ${vehicle.registrationStatus}`, 10, 30);
-
     // Add Recalls
     doc.text('Recalls:', 10, 40);
     vehicle.recalls.forEach((recall, index) => {
       doc.text(`Recall ${index + 1}: ${recall.summary}`, 15, 50 + index * 10);
     });
-
     // Add Emission & Safety Inspection
     doc.text('Emission & Safety Inspection:', 10, 100);
     vehicle.emissionSafetyInspections.forEach((inspection, index) => {
@@ -268,7 +440,6 @@ const Garage = () => {
         110 + index * 10
       );
     });
-
     // Add Accident & Damage History
     doc.text('Accident & Damage History:', 10, 150);
     vehicle.accidentDamageHistory.forEach((accident, index) => {
@@ -278,13 +449,11 @@ const Garage = () => {
         160 + index * 10
       );
     });
-
     // Add Lien & Impound Records
     doc.text('Lien & Impound Records:', 10, 200);
     vehicle.lienImpoundRecords.forEach((record, index) => {
       doc.text(`Record ${index + 1}: ${record.event}`, 15, 210 + index * 10);
     });
-
     doc.save(`${vehicle.make}_${vehicle.model}_${vehicle.year}.pdf`);
   };
 
@@ -323,6 +492,16 @@ const Garage = () => {
     );
   };
 
+  // Handle "See Full Record" button click for free users
+  const handleSeeFullRecord = async () => {
+    if (userRole === 'free') {
+      // Redirect to payment page or perform a paid search
+      alert('You are being redirected to purchase a full record.');
+      // Example: navigate to a payment page
+      navigate('/checkout', { state: { vin: selectedVehicle.vin } });
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-center mt-5">
@@ -340,11 +519,98 @@ const Garage = () => {
         <FaCar className="me-2" /> My Garage
       </h2>
       {error && <Alert variant="danger">{error}</Alert>}
-      {/* Add VIN Button */}
+      {/* Add VIN Button and Search Bar */}
       <div className="text-center mb-4">
-        <Button variant="primary" onClick={() => navigate('/vin-search')}>
+        <Button
+          variant="primary"
+          onClick={() => setShowSearchBar(!showSearchBar)}
+          aria-expanded={showSearchBar}
+        >
           <FaPlus className="me-2" /> Add Another VIN
         </Button>
+        <Collapse in={showSearchBar}>
+          <div className="mt-3">
+            <Form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const vin = e.target.elements.vin.value;
+                handleVINSearch(vin);
+              }}
+            >
+              <div className="input-group">
+                <Form.Control
+                  type="text"
+                  name="vin"
+                  placeholder="Enter VIN"
+                  aria-label="Enter VIN"
+                  required
+                  style={{
+                    borderTopRightRadius: '0',
+                    borderBottomRightRadius: '0',
+                    border: '2px solid #007bff',
+                    minHeight: '48px',
+                    lineHeight: '1.5',
+                    transition:
+                      'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.transform = 'scale(1.02)';
+                    e.target.style.boxShadow =
+                      '0 4px 8px rgba(0, 123, 255, 0.2)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.transform = 'scale(1)';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+                <Button
+                  variant="primary"
+                  type="submit"
+                  disabled={searchLoading}
+                  style={{
+                    borderTopLeftRadius: '0',
+                    borderBottomLeftRadius: '0',
+                    padding: '0.5rem 1.5rem',
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    backgroundColor: '#007bff',
+                    borderColor: '#007bff',
+                    minHeight: '48px',
+                    transition:
+                      'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'scale(1.05)';
+                    e.target.style.boxShadow =
+                      '0 4px 8px rgba(0, 123, 255, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'scale(1)';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                >
+                  {searchLoading ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      Searching...
+                    </>
+                  ) : (
+                    'Search'
+                  )}
+                </Button>
+              </div>
+            </Form>
+            {searchError && (
+              <Alert variant="danger" className="mt-3">
+                {searchError}
+              </Alert>
+            )}
+          </div>
+        </Collapse>
       </div>
       {/* Compare Mode Toggle */}
       <div className="text-center mb-4">
@@ -415,6 +681,13 @@ const Garage = () => {
             }
           >
             Compare Selected Cars
+          </Button>
+        </div>
+      )}
+      {userRole === 'free' && (
+        <div className="text-center mt-4">
+          <Button variant="primary" onClick={handleSeeFullRecord}>
+            <FaArrowRight className="me-2" /> See Full Report ($XX.XX)
           </Button>
         </div>
       )}
@@ -546,24 +819,12 @@ const Garage = () => {
                   {selectedVehicle?.specifications?.madeIn || 'N/A'}
                 </p>
                 <p>
-                  <strong>Fuel Type:</strong>{' '}
-                  {selectedVehicle?.specifications?.fuelType || 'N/A'}
-                </p>
-                <p>
                   <strong>Fuel Capacity:</strong>{' '}
                   {selectedVehicle?.specifications?.fuelCapacity || 'N/A'}
                 </p>
                 <p>
-                  <strong>Highway Mileage:</strong>{' '}
-                  {selectedVehicle?.specifications?.highwayMileage || 'N/A'}
-                </p>
-                <p>
                   <strong>City Mileage:</strong>{' '}
                   {selectedVehicle?.specifications?.cityMileage || 'N/A'}
-                </p>
-                <p>
-                  <strong>Invoice Price:</strong>{' '}
-                  {selectedVehicle?.specifications?.invoicePrice || 'N/A'}
                 </p>
                 <p>
                   <strong>MSRP:</strong>{' '}
@@ -571,136 +832,8 @@ const Garage = () => {
                 </p>
               </Accordion.Body>
             </Accordion.Item>
-            {/* Title Records */}
-            <Accordion.Item eventKey="2">
-              <Accordion.Header>
-                <FaFile className="me-2 text-primary" /> Title Records
-              </Accordion.Header>
-              <Accordion.Body>
-                {selectedVehicle?.titleRecords?.map((record, index) => (
-                  <div key={index} className="mb-3">
-                    <p>
-                      <strong>Date:</strong> {record.date}
-                    </p>
-                    <p>
-                      <strong>State of Title:</strong> {record.state}
-                    </p>
-                    <p>
-                      <strong>Status:</strong> {record.status}
-                    </p>
-                    <p>
-                      <strong>Mileage:</strong> {record.mileage}
-                    </p>
-                  </div>
-                ))}
-              </Accordion.Body>
-            </Accordion.Item>
-            {/* Junk / Salvage / Insurance Records */}
-            <Accordion.Item eventKey="3">
-              <Accordion.Header>
-                <FaExclamationCircle className="me-2 text-danger" /> Junk /
-                Salvage / Insurance Records
-              </Accordion.Header>
-              <Accordion.Body>
-                {selectedVehicle?.junkSalvageRecords?.map((record, index) => (
-                  <div key={index} className="mb-3">
-                    <p>
-                      <strong>Date:</strong> {record.date}
-                    </p>
-                    <p>
-                      <strong>Reporting Entity:</strong>{' '}
-                      {record.reportingEntity}
-                    </p>
-                    <p>
-                      <strong>Details:</strong> {record.details}
-                    </p>
-                  </div>
-                ))}
-              </Accordion.Body>
-            </Accordion.Item>
-            {/* Theft Records */}
-            <Accordion.Item eventKey="4">
-              <Accordion.Header>
-                <FaExclamationCircle className="me-2 text-danger" /> Theft
-                Records
-              </Accordion.Header>
-              <Accordion.Body>
-                {selectedVehicle?.theftRecords?.length > 0 ? (
-                  selectedVehicle?.theftRecords?.map((record, index) => (
-                    <div key={index} className="mb-3">
-                      <p>
-                        <strong>Date:</strong> {record.date}
-                      </p>
-                      <p>
-                        <strong>Status:</strong> {record.status}
-                      </p>
-                      <p>
-                        <strong>Details:</strong> {record.details}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <p>No theft or theft recovery records found!</p>
-                )}
-              </Accordion.Body>
-            </Accordion.Item>
-            {/* Lien / Impound / Export Records */}
-            <Accordion.Item eventKey="5">
-              <Accordion.Header>
-                <FaExclamationCircle className="me-2 text-danger" /> Lien /
-                Impound / Export Records
-              </Accordion.Header>
-              <Accordion.Body>
-                {selectedVehicle?.lienImpoundExportRecords?.length > 0 ? (
-                  selectedVehicle?.lienImpoundExportRecords?.map(
-                    (record, index) => (
-                      <div key={index} className="mb-3">
-                        <p>
-                          <strong>Date:</strong> {record.date}
-                        </p>
-                        <p>
-                          <strong>Type:</strong> {record.type}
-                        </p>
-                        <p>
-                          <strong>Details:</strong> {record.details}
-                        </p>
-                      </div>
-                    )
-                  )
-                ) : (
-                  <p>No lien, impound, or export records found!</p>
-                )}
-              </Accordion.Body>
-            </Accordion.Item>
-            {/* Sale Records */}
-            <Accordion.Item eventKey="6">
-              <Accordion.Header>
-                <FaFile className="me-2 text-primary" /> Sale Records
-              </Accordion.Header>
-              <Accordion.Body>
-                {selectedVehicle?.saleRecords?.map((record, index) => (
-                  <div key={index} className="mb-3">
-                    <p>
-                      <strong>Date:</strong> {record.date}
-                    </p>
-                    <p>
-                      <strong>Seller:</strong> {record.seller}
-                    </p>
-                    <p>
-                      <strong>Price:</strong> {record.price}
-                    </p>
-                    <p>
-                      <strong>Mileage:</strong> {record.mileage}
-                    </p>
-                    <p>
-                      <strong>Color:</strong> {record.color}
-                    </p>
-                  </div>
-                ))}
-              </Accordion.Body>
-            </Accordion.Item>
             {/* Problem Checks */}
-            <Accordion.Item eventKey="7">
+            <Accordion.Item eventKey="2">
               <Accordion.Header>
                 <FaExclamationCircle className="me-2 text-danger" /> Problem
                 Checks
@@ -737,7 +870,7 @@ const Garage = () => {
               </Accordion.Body>
             </Accordion.Item>
             {/* Graphs */}
-            <Accordion.Item eventKey="8">
+            <Accordion.Item eventKey="3">
               <Accordion.Header>
                 <FaChartLine className="me-2 text-primary" /> Graphs
               </Accordion.Header>
@@ -749,7 +882,7 @@ const Garage = () => {
               </Accordion.Body>
             </Accordion.Item>
             {/* Recalls */}
-            <Accordion.Item eventKey="9">
+            <Accordion.Item eventKey="4">
               <Accordion.Header>
                 <FaExclamationCircle className="me-2 text-danger" /> Recalls
               </Accordion.Header>
@@ -757,10 +890,11 @@ const Garage = () => {
                 {selectedVehicle?.recalls?.map((recall, index) => (
                   <div key={index} className="mb-3">
                     <p>
-                      <strong>Recall Date:</strong> {recall.date}
+                      <strong>Recall Date:</strong> {recall.reportReceivedDate}
                     </p>
                     <p>
-                      <strong>Recall Number:</strong> {recall.number}
+                      <strong>Recall Number:</strong>{' '}
+                      {recall.nhtsaCampaignNumber}
                     </p>
                     <p>
                       <strong>Component:</strong> {recall.component}
@@ -781,83 +915,268 @@ const Garage = () => {
                 ))}
               </Accordion.Body>
             </Accordion.Item>
-            {/* Emission & Safety Inspection */}
-            <Accordion.Item eventKey="10">
-              <Accordion.Header>
-                <FaCheckCircle className="me-2 text-success" /> Emission &
-                Safety Inspection
-              </Accordion.Header>
-              <Accordion.Body>
-                {selectedVehicle?.emissionSafetyInspections?.map(
-                  (inspection, index) => (
-                    <div key={index} className="mb-3">
-                      <p>
-                        <strong>Date:</strong> {inspection.date}
-                      </p>
-                      <p>
-                        <strong>Location:</strong> {inspection.location}
-                      </p>
-                      <p>
-                        <strong>Result:</strong> {inspection.result}
-                      </p>
+            {/* Additional Fields for Paid Users */}
+            {userRole !== 'free' ? (
+              <>
+                {/* Title Records */}
+                <Accordion.Item eventKey="5">
+                  <Accordion.Header>
+                    <FaFile className="me-2 text-primary" /> Title Records
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    {selectedVehicle?.titleRecords?.map((record, index) => (
+                      <div key={index} className="mb-3">
+                        <p>
+                          <strong>Date:</strong> {record.date}
+                        </p>
+                        <p>
+                          <strong>State of Title:</strong> {record.state}
+                        </p>
+                        <p>
+                          <strong>Status:</strong> {record.status}
+                        </p>
+                        <p>
+                          <strong>Mileage:</strong> {record.mileage}
+                        </p>
+                      </div>
+                    ))}
+                  </Accordion.Body>
+                </Accordion.Item>
+                {/* Junk / Salvage / Insurance Records */}
+                <Accordion.Item eventKey="6">
+                  <Accordion.Header>
+                    <FaExclamationCircle className="me-2 text-danger" /> Junk /
+                    Salvage / Insurance Records
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    {selectedVehicle?.junkSalvageRecords?.map(
+                      (record, index) => (
+                        <div key={index} className="mb-3">
+                          <p>
+                            <strong>Date:</strong> {record.date}
+                          </p>
+                          <p>
+                            <strong>Reporting Entity:</strong>{' '}
+                            {record.reportingEntity}
+                          </p>
+                          <p>
+                            <strong>Details:</strong> {record.details}
+                          </p>
+                        </div>
+                      )
+                    )}
+                  </Accordion.Body>
+                </Accordion.Item>
+                {/* Theft Records */}
+                <Accordion.Item eventKey="7">
+                  <Accordion.Header>
+                    <FaExclamationCircle className="me-2 text-danger" /> Theft
+                    Records
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    {selectedVehicle?.theftRecords?.length > 0 ? (
+                      selectedVehicle?.theftRecords?.map((record, index) => (
+                        <div key={index} className="mb-3">
+                          <p>
+                            <strong>Date:</strong> {record.date}
+                          </p>
+                          <p>
+                            <strong>Status:</strong> {record.status}
+                          </p>
+                          <p>
+                            <strong>Details:</strong> {record.details}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p>No theft or theft recovery records found!</p>
+                    )}
+                  </Accordion.Body>
+                </Accordion.Item>
+                {/* Lien / Impound / Export Records */}
+                <Accordion.Item eventKey="8">
+                  <Accordion.Header>
+                    <FaExclamationCircle className="me-2 text-danger" /> Lien /
+                    Impound / Export Records
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    {selectedVehicle?.lienImpoundExportRecords?.length > 0 ? (
+                      selectedVehicle?.lienImpoundExportRecords?.map(
+                        (record, index) => (
+                          <div key={index} className="mb-3">
+                            <p>
+                              <strong>Date:</strong> {record.date}
+                            </p>
+                            <p>
+                              <strong>Type:</strong> {record.type}
+                            </p>
+                            <p>
+                              <strong>Details:</strong> {record.details}
+                            </p>
+                          </div>
+                        )
+                      )
+                    ) : (
+                      <p>No lien, impound, or export records found!</p>
+                    )}
+                  </Accordion.Body>
+                </Accordion.Item>
+                {/* Sale Records */}
+                <Accordion.Item eventKey="9">
+                  <Accordion.Header>
+                    <FaFile className="me-2 text-primary" /> Sale Records
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    {selectedVehicle?.saleRecords?.map((record, index) => (
+                      <div key={index} className="mb-3">
+                        <p>
+                          <strong>Date:</strong> {record.date}
+                        </p>
+                        <p>
+                          <strong>Seller:</strong> {record.seller}
+                        </p>
+                        <p>
+                          <strong>Price:</strong> {record.price}
+                        </p>
+                        <p>
+                          <strong>Mileage:</strong> {record.mileage}
+                        </p>
+                        <p>
+                          <strong>Color:</strong> {record.color}
+                        </p>
+                      </div>
+                    ))}
+                  </Accordion.Body>
+                </Accordion.Item>
+
+                {/* Emission & Safety Inspection */}
+                <Accordion.Item eventKey="10">
+                  <Accordion.Header>
+                    <FaCheckCircle className="me-2 text-success" /> Emission &
+                    Safety Inspection
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    {selectedVehicle?.emissionSafetyInspections?.map(
+                      (inspection, index) => (
+                        <div key={index} className="mb-3">
+                          <p>
+                            <strong>Date:</strong> {inspection.date}
+                          </p>
+                          <p>
+                            <strong>Location:</strong> {inspection.location}
+                          </p>
+                          <p>
+                            <strong>Result:</strong> {inspection.result}
+                          </p>
+                        </div>
+                      )
+                    )}
+                  </Accordion.Body>
+                </Accordion.Item>
+
+                {/* Accident & Damage History */}
+                <Accordion.Item eventKey="11">
+                  <Accordion.Header>
+                    <FaCarCrash className="me-2 text-danger" /> Accident &
+                    Damage History
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    {selectedVehicle?.accidentDamageHistory?.map(
+                      (accident, index) => (
+                        <div key={index} className="mb-3">
+                          <p>
+                            <strong>Date:</strong> {accident.date}
+                          </p>
+                          <p>
+                            <strong>Impact:</strong> {accident.impact}
+                          </p>
+                          <p>
+                            <strong>Airbags:</strong> {accident.airbags}
+                          </p>
+                          <p>
+                            <strong>Repair Cost:</strong> {accident.repairCost}
+                          </p>
+                        </div>
+                      )
+                    )}
+                  </Accordion.Body>
+                </Accordion.Item>
+
+                {/* Lien & Impound Records */}
+                <Accordion.Item eventKey="12">
+                  <Accordion.Header>
+                    <FaExclamationCircle className="me-2 text-danger" /> Lien &
+                    Impound Records
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    {selectedVehicle?.lienImpoundRecords?.map(
+                      (record, index) => (
+                        <div key={index} className="mb-3">
+                          <p>
+                            <strong>Date:</strong> {record.date}
+                          </p>
+                          <p>
+                            <strong>State:</strong> {record.state}
+                          </p>
+                          <p>
+                            <strong>Reported By:</strong> {record.reportedBy}
+                          </p>
+                          <p>
+                            <strong>Event:</strong> {record.event}
+                          </p>
+                        </div>
+                      )
+                    )}
+                  </Accordion.Body>
+                </Accordion.Item>
+              </>
+            ) : (
+              <>
+                {/* Placeholder for Paid Fields */}
+                <Accordion.Item eventKey="5">
+                  <Accordion.Header>
+                    <FaLock className="me-2 text-warning" /> Title Records
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    <div className="text-center">
+                      <p>🔒 Discover the full report to view Title Records.</p>
                     </div>
-                  )
-                )}
-              </Accordion.Body>
-            </Accordion.Item>
-            {/* Accident & Damage History */}
-            <Accordion.Item eventKey="11">
-              <Accordion.Header>
-                <FaCarCrash className="me-2 text-danger" /> Accident & Damage
-                History
-              </Accordion.Header>
-              <Accordion.Body>
-                {selectedVehicle?.accidentDamageHistory?.map(
-                  (accident, index) => (
-                    <div key={index} className="mb-3">
-                      <p>
-                        <strong>Date:</strong> {accident.date}
-                      </p>
-                      <p>
-                        <strong>Impact:</strong> {accident.impact}
-                      </p>
-                      <p>
-                        <strong>Airbags:</strong> {accident.airbags}
-                      </p>
-                      <p>
-                        <strong>Repair Cost:</strong> {accident.repairCost}
-                      </p>
+                  </Accordion.Body>
+                </Accordion.Item>
+
+                <Accordion.Item eventKey="6">
+                  <Accordion.Header>
+                    <FaLock className="me-2 text-warning" /> Theft Records
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    <div className="text-center">
+                      <p>🔒 Discover the full report to view Theft Records.</p>
                     </div>
-                  )
-                )}
-              </Accordion.Body>
-            </Accordion.Item>
-            {/* Lien & Impound Records */}
-            <Accordion.Item eventKey="12">
-              <Accordion.Header>
-                <FaExclamationCircle className="me-2 text-danger" /> Lien &
-                Impound Records
-              </Accordion.Header>
-              <Accordion.Body>
-                {selectedVehicle?.lienImpoundRecords?.map((record, index) => (
-                  <div key={index} className="mb-3">
-                    <p>
-                      <strong>Date:</strong> {record.date}
-                    </p>
-                    <p>
-                      <strong>State:</strong> {record.state}
-                    </p>
-                    <p>
-                      <strong>Reported By:</strong> {record.reportedBy}
-                    </p>
-                    <p>
-                      <strong>Event:</strong> {record.event}
-                    </p>
-                  </div>
-                ))}
-              </Accordion.Body>
-            </Accordion.Item>
+                  </Accordion.Body>
+                </Accordion.Item>
+
+                <Accordion.Item eventKey="7">
+                  <Accordion.Header>
+                    <FaLock className="me-2 text-warning" /> Sale Records
+                  </Accordion.Header>
+                  <Accordion.Body>
+                    <div className="text-center">
+                      <p>🔒 Discover the full report to view Sale Records.</p>
+                    </div>
+                  </Accordion.Body>
+                </Accordion.Item>
+              </>
+            )}
           </Accordion>
+
+          {/* "See Full Record" Button for Free Users */}
+          {userRole === 'free' && (
+            <div className="text-center mt-4">
+              <Button variant="primary" onClick={handleSeeFullRecord}>
+                <FaArrowRight className="me-2" /> Buy 1 Search ($XX.XX)
+              </Button>
+            </div>
+          )}
         </Modal.Body>
         <Modal.Footer>
           {/* Social Media Icons */}
@@ -905,3 +1224,4 @@ const Garage = () => {
 };
 
 export default Garage;
+
