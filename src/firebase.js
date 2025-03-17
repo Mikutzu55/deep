@@ -35,6 +35,39 @@ const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 const appleProvider = new OAuthProvider('apple.com');
 
+// Add user profile creation
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    const userRef = doc(db, 'users', user.uid);
+    const docSnap = await getDoc(userRef);
+
+    if (!docSnap.exists()) {
+      try {
+        // Create a new user document with the updated structure
+        await setDoc(userRef, {
+          uid: user.uid,
+          email: user.email,
+          phone: user.phoneNumber || '',
+          membership: 'free', // Default membership
+          searchLimit: 5, // Free users get 5 searches
+          searchesUsed: 0, // No searches used yet
+          expirationDate: null, // No expiration date
+          paymentId: null, // No payment ID
+          createdAt: new Date(), // Account creation date
+        });
+        console.log('New user document created for:', user.uid);
+      } catch (error) {
+        console.error('Error creating user document:', error);
+      }
+    } else {
+      console.log('User document already exists for:', user.uid);
+      console.log('User Data:', docSnap.data());
+    }
+  } else {
+    console.log('User is not authenticated.');
+  }
+});
+
 export {
   auth,
   db,
@@ -45,19 +78,4 @@ export {
   signInWithRedirect,
 };
 export default app;
-// Add user profile creation
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    const userRef = doc(db, 'users', user.uid);
-    const docSnap = await getDoc(userRef);
-    if (!docSnap.exists()) {
-      await setDoc(userRef, {
-        email: user.email,
-        phone: user.phoneNumber || '',
-        membership: 'Free',
-        searches: [],
-        createdAt: new Date(),
-      });
-    }
-  }
-});
+
