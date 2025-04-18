@@ -1,0 +1,671 @@
+/* BlogPost.css */
+/* Main container styling */
+.blog-post-container {
+  position: relative;
+}
+
+/* Reading progress bar */
+.reading-progress-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1030;
+}
+
+.reading-progress-bar {
+  background: linear-gradient(
+    to right,
+    var(--accent-color),
+    var(--secondary-accent-color)
+  );
+  transition: width 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Glassmorphism card styling */
+.glassmorphism-card {
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.dark .glassmorphism-card {
+  background: rgba(30, 41, 59, 0.8);
+  color: #f8f9fa;
+}
+
+.light .glassmorphism-card {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+/* Hover effects */
+.hover-zoom {
+  transition: transform 0.3s ease;
+}
+
+.hover-zoom:hover {
+  transform: translateY(-5px);
+}
+
+/* Content styling */
+.blog-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 1.5rem 0;
+}
+
+.blog-content h2 {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  color: var(--heading-color);
+}
+
+.blog-content h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.8rem;
+  font-weight: 600;
+  color: var(--heading-color);
+}
+
+.blog-content p {
+  margin-bottom: 1.2rem;
+  font-size: 1.1rem;
+  line-height: 1.8;
+}
+
+.blog-content blockquote {
+  border-left: 5px solid var(--accent-color);
+  padding-left: 1.2rem;
+  margin-left: 0;
+  margin-right: 0;
+  font-style: italic;
+  color: var(--muted-text-color);
+}
+
+.blog-content pre {
+  background-color: #282c34;
+  color: #abb2bf;
+  padding: 1.2rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.blog-content code {
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.blog-content a {
+  color: var(--accent-color);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--accent-color);
+  transition: all 0.2s ease;
+}
+
+.blog-content a:hover {
+  color: var(--secondary-accent-color);
+  border-bottom: 1px solid var(--secondary-accent-color);
+}
+
+/* Post header and hero section */
+.post-title {
+  font-weight: bold;
+}
+
+.text-gradient {
+  background: linear-gradient(
+    45deg,
+    var(--accent-color),
+    var(--secondary-accent-color)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+}
+
+.post-featured-image {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  object-fit: cover;
+  max-height: 500px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+.post-excerpt {
+  color: var(--muted-text-color);
+  font-style: italic;
+  font-size: 1.2rem;
+  line-height: 1.7;
+  padding-left: 1rem;
+  border-left: 4px solid var(--accent-color);
+  margin-bottom: 2rem;
+}
+
+.image-caption {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted-text-color);
+  margin-top: 0.5rem;
+}
+
+/* Author section styling */
+.author-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+}
+
+.author-card {
+  margin-top: 2rem;
+}
+
+.author-bio {
+  max-width: 100%;
+}
+
+/* Tag styling */
+.tag-badge {
+  transition: all 0.2s ease;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.tag-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tag-suggestion:hover {
+  background-color: rgba(var(--accent-color-rgb), 0.1);
+}
+
+.tag-remove {
+  cursor: pointer;
+  opacity: 0.7;
+  margin-left: 0.5rem;
+}
+
+.tag-remove:hover {
+  opacity: 1;
+}
+
+/* Related posts styling */
+.related-post-item {
+  transition: all 0.2s ease;
+  padding: 0.8rem 0;
+  border-radius: 8px;
+}
+
+.related-post-item:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.dark .related-post-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.related-post-image img {
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  object-fit: cover;
+}
+
+/* Newsletter signup enhancement */
+.newsletter-form {
+  position: relative;
+  padding: 0.5rem;
+  background: linear-gradient(
+    45deg,
+    rgba(var(--accent-color-rgb), 0.05),
+    rgba(var(--secondary-accent-rgb), 0.05)
+  );
+  border-radius: 12px;
+  border: 1px solid rgba(var(--accent-color-rgb), 0.1);
+  overflow: hidden;
+}
+
+.newsletter-form::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  z-index: -1;
+  background: linear-gradient(
+    45deg,
+    var(--accent-color),
+    var(--secondary-accent-color)
+  );
+  border-radius: 14px;
+  opacity: 0.3;
+}
+
+.newsletter-form input[type='email'] {
+  background-color: rgba(255, 255, 255, 0.9);
+  border: none;
+  padding: 0.8rem 1.2rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.dark .newsletter-form input[type='email'] {
+  background-color: rgba(30, 41, 59, 0.7);
+  color: #fff;
+}
+
+.newsletter-form input[type='email']:focus {
+  box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb), 0.2);
+}
+
+.newsletter-form .btn-primary {
+  padding: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  background: linear-gradient(
+    45deg,
+    var(--accent-color),
+    var(--secondary-accent-color)
+  );
+  border: none;
+}
+
+.newsletter-form .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Post actions styling */
+.post-actions button {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  transition: all 0.2s ease;
+}
+
+.post-actions button:hover {
+  transform: translateY(-2px);
+}
+
+.share-options {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  animation: fadeIn 0.2s ease;
+}
+
+.dark .share-options {
+  background: rgba(30, 41, 59, 0.95);
+}
+
+.share-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-color);
+  transition: all 0.2s ease;
+}
+
+.share-btn:hover {
+  background-color: rgba(var(--accent-color-rgb), 0.1);
+  transform: translateY(-2px);
+}
+
+/* SEO Analyzer styling */
+.seo-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.seo-score-circle {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background-color: #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+/* ReactQuill Editor Fixes */
+.quill-container {
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  height: 400px; /* Match the height specified in the component */
+  margin-bottom: 20px;
+}
+
+.ql-container {
+  font-family: inherit;
+  font-size: 1.1rem;
+  height: calc(400px - 42px) !important; /* Total height minus toolbar height */
+  overflow-y: auto;
+}
+
+.ql-editor {
+  min-height: 100%;
+  padding: 12px 15px;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  overflow-y: auto;
+}
+
+.ql-toolbar {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #ced4da;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* Fix for dark mode */
+.dark .quill-container {
+  background: rgba(30, 41, 59, 0.8);
+}
+
+.dark .ql-toolbar {
+  background: #2d3748;
+  border-color: #4a5568;
+}
+
+.dark .ql-toolbar .ql-stroke {
+  stroke: #e2e8f0 !important;
+}
+
+.dark .ql-toolbar .ql-fill {
+  fill: #e2e8f0 !important;
+}
+
+.dark .ql-toolbar .ql-picker {
+  color: #e2e8f0 !important;
+}
+
+.dark .ql-toolbar .ql-picker-options {
+  background-color: #1a202c;
+  border-color: #4a5568;
+}
+
+.dark .ql-editor {
+  color: #e2e8f0;
+}
+
+/* Ensure the editor is properly clickable */
+.ql-editor:focus {
+  outline: none;
+  border: none;
+}
+
+/* Make sure the editor is visibly interactive */
+.quill-container:hover {
+  box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.2);
+}
+
+.quill-container:focus-within {
+  box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.3);
+}
+
+/* Enhanced newsletter section styling */
+.newsletter-card {
+  position: relative;
+  overflow: hidden;
+  border: none !important;
+}
+
+.newsletter-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(var(--accent-color-rgb), 0.1) 0%,
+    rgba(var(--secondary-accent-rgb), 0.1) 100%
+  );
+  z-index: -1;
+}
+
+.newsletter-card h3 {
+  background: linear-gradient(
+    45deg,
+    var(--accent-color),
+    var(--secondary-accent-color)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+  position: relative;
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+.newsletter-card h3::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 50px;
+  height: 3px;
+  background: linear-gradient(
+    45deg,
+    var(--accent-color),
+    var(--secondary-accent-color)
+  );
+  border-radius: 3px;
+}
+
+.newsletter-card p {
+  color: var(--muted-text-color);
+  margin-bottom: 1.5rem;
+  font-size: 1.05rem;
+}
+
+.newsletter-card .form-control:focus {
+  box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb), 0.2);
+  border-color: var(--accent-color);
+}
+
+.newsletter-card .btn-primary {
+  background: linear-gradient(
+    45deg,
+    var(--accent-color),
+    var(--secondary-accent-color)
+  );
+  border: none;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  padding: 0.75rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.newsletter-card .btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: all 0.6s ease;
+}
+
+.newsletter-card .btn-primary:hover::before {
+  left: 100%;
+}
+
+.newsletter-card .btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(var(--accent-color-rgb), 0.2);
+}
+
+/* Email input enhancement */
+.newsletter-form .email-input-container {
+  position: relative;
+}
+
+.newsletter-form .email-input-container .form-control {
+  padding-left: 2.5rem;
+  height: 50px;
+}
+
+.newsletter-form .email-input-container i {
+  position: absolute;
+  top: 50%;
+  left: 15px;
+  transform: translateY(-50%);
+  color: var(--accent-color);
+  opacity: 0.7;
+}
+
+.newsletter-form .btn {
+  height: 50px;
+}
+
+.email-animation {
+  position: absolute;
+  top: -30px;
+  right: 10px;
+  width: 60px;
+  height: 60px;
+  opacity: 0.1;
+  z-index: 0;
+}
+
+/* Additional style for the blog post card on hover */
+.glassmorphism-card.content-card {
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.glassmorphism-card.content-card:hover {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+  border-color: rgba(var(--accent-color-rgb), 0.3);
+}
+
+/* Preview/editor toggle styles */
+.preview-toggle-btn {
+  transition: all 0.3s ease;
+}
+
+.preview-toggle-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Media queries for responsive design */
+@media (max-width: 992px) {
+  .post-title {
+    font-size: 2.5rem;
+  }
+
+  .post-featured-image {
+    max-height: 400px;
+  }
+}
+
+@media (max-width: 768px) {
+  .post-title {
+    font-size: 2rem;
+  }
+
+  .post-featured-image {
+    max-height: 350px;
+  }
+
+  .post-excerpt {
+    font-size: 1rem;
+  }
+
+  .blog-content {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .post-title {
+    font-size: 1.8rem;
+  }
+
+  .post-featured-image {
+    max-height: 250px;
+  }
+
+  .post-actions {
+    flex-direction: column;
+  }
+
+  .post-actions > div {
+    margin-bottom: 1rem;
+  }
+}
+
+/* CSS Variables - Add these to your App.css or :root */
+:root {
+  --accent-color: #3490dc;
+  --accent-color-rgb: 52, 144, 220;
+  --secondary-accent-color: #6574cd;
+  --secondary-accent-rgb: 101, 116, 205;
+  --heading-color: #2d3748;
+  --muted-text-color: #718096;
+}
+
+.dark {
+  --heading-color: #e2e8f0;
+  --muted-text-color: #a0aec0;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
