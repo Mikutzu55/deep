@@ -1,3 +1,4 @@
+// App.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Routes,
@@ -21,6 +22,7 @@ import Home from './Home';
 import About from './About';
 import Contact from './Contact';
 import UserPage from './UserPage';
+import Blog from './Blog';
 import Footer from './Footer';
 import ErrorBoundary from './ErrorBoundary';
 import { auth } from './firebase';
@@ -29,8 +31,10 @@ import Login from './Login';
 import Garage from './Garage';
 import VINSearch from './VINSearch';
 import UserAccount from './UserAccount';
+import BlogPost from './BlogPost';
 import { FaUserCircle } from 'react-icons/fa';
 import { signOut } from 'firebase/auth';
+import { useTheme } from './ThemeContext'; // Import the useTheme hook
 
 // PrivateRoute Component
 const PrivateRoute = ({ children }) => {
@@ -41,30 +45,9 @@ const PrivateRoute = ({ children }) => {
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [theme, setTheme] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') || 'light';
-    }
-    return 'light';
-  });
+  const { theme, toggleTheme } = useTheme(); // Use the useTheme hook
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
-
-  const toggleTheme = useCallback(() => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
-  }, [theme]);
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    const pageTitle =
-      location.pathname === '/'
-        ? 'Home'
-        : location.pathname.slice(1).replace(/-/g, ' ').toUpperCase();
-    document.title = `Car Website - ${pageTitle}`;
-  }, [theme, location]);
 
   const handleAuthModal = (login = true) => {
     setIsLogin(login);
@@ -73,7 +56,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth); // Fixed typo here
+      await signOut(auth);
       navigate('/');
     } catch (error) {
       console.error('Error logging out:', error);
@@ -81,9 +64,14 @@ function App() {
   };
 
   return (
-    <div>
+    <div data-theme={theme}>
       {/* Navigation Bar */}
-      <Navbar bg="dark" variant="dark" expand="lg" fixed="top">
+      <Navbar
+        bg={theme === 'light' ? 'light' : 'dark'}
+        variant={theme === 'light' ? 'light' : 'dark'}
+        expand="lg"
+        fixed="top"
+      >
         <Container>
           <Navbar.Brand as={Link} to="/" className="fw-bold">
             Car Website
@@ -91,19 +79,46 @@ function App() {
           <Navbar.Toggle aria-controls="basic-navbar-nav" />
           <Navbar.Collapse id="basic-navbar-nav">
             <Nav className="ms-auto">
-              <Nav.Link as={Link} to="/" className="text-white">
+              <Nav.Link
+                as={Link}
+                to="/"
+                className={theme === 'light' ? 'text-dark' : 'text-white'}
+              >
                 Home
               </Nav.Link>
-              <Nav.Link as={Link} to="/about" className="text-white">
+              <Nav.Link
+                as={Link}
+                to="/about"
+                className={theme === 'light' ? 'text-dark' : 'text-white'}
+              >
                 About
               </Nav.Link>
-              <Nav.Link as={Link} to="/contact" className="text-white">
+              <Nav.Link
+                as={Link}
+                to="/blog"
+                className={theme === 'light' ? 'text-dark' : 'text-white'}
+              >
+                Blog
+              </Nav.Link>
+              <Nav.Link
+                as={Link}
+                to="/contact"
+                className={theme === 'light' ? 'text-dark' : 'text-white'}
+              >
                 Contact
               </Nav.Link>
-              <Nav.Link as={Link} to="/garage" className="text-white">
+              <Nav.Link
+                as={Link}
+                to="/garage"
+                className={theme === 'light' ? 'text-dark' : 'text-white'}
+              >
                 My Garage
               </Nav.Link>
-              <Nav.Link as={Link} to="/vin-search" className="text-white">
+              <Nav.Link
+                as={Link}
+                to="/vin-search"
+                className={theme === 'light' ? 'text-dark' : 'text-white'}
+              >
                 VIN Search
               </Nav.Link>
             </Nav>
@@ -114,7 +129,7 @@ function App() {
                 title={<FaUserCircle size={24} />}
                 id="basic-nav-dropdown"
                 align="end"
-                className="text-white"
+                className={theme === 'light' ? 'text-dark' : 'text-white'}
               >
                 <NavDropdown.Item as={Link} to="/my-account">
                   My Account
@@ -128,7 +143,7 @@ function App() {
                 </NavDropdown.Item>
               </NavDropdown>
               <Button
-                variant="outline-light"
+                variant={theme === 'light' ? 'outline-dark' : 'outline-light'}
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
                 className="ms-2"
@@ -139,7 +154,7 @@ function App() {
           ) : (
             <div className="d-flex">
               <Button
-                variant="outline-light"
+                variant={theme === 'light' ? 'outline-dark' : 'outline-light'}
                 onClick={() => handleAuthModal(true)}
                 aria-label="Login/Signup"
                 className="me-2"
@@ -147,7 +162,7 @@ function App() {
                 <FaUserCircle size={24} />
               </Button>
               <Button
-                variant="outline-light"
+                variant={theme === 'light' ? 'outline-dark' : 'outline-light'}
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
               >
@@ -189,17 +204,19 @@ function App() {
       >
         <Container className="mt-5 pt-5">
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/vin-search" element={<VINSearch />} />
+            <Route path="/" element={<Home theme={theme} />} />
+            <Route path="/about" element={<About theme={theme} />} />
+            <Route path="/contact" element={<Contact theme={theme} />} />
+            <Route path="/login" element={<Login theme={theme} />} />
+            <Route path="/signup" element={<SignUp theme={theme} />} />
+            <Route path="/vin-search" element={<VINSearch theme={theme} />} />
+            <Route path="/blog" element={<Blog theme={theme} />} />
+            <Route path="/blog/:id" element={<BlogPost theme={theme} />} />
             <Route
               path="/garage"
               element={
                 <PrivateRoute>
-                  <Garage />
+                  <Garage theme={theme} />
                 </PrivateRoute>
               }
             />
@@ -207,7 +224,7 @@ function App() {
               path="/my-account"
               element={
                 <PrivateRoute>
-                  <UserAccount />
+                  <UserAccount theme={theme} />
                 </PrivateRoute>
               }
             />
@@ -215,7 +232,7 @@ function App() {
               path="/user-page/:make/:model/:year/:registrationStatus/:owner"
               element={
                 <PrivateRoute>
-                  <UserPage />
+                  <UserPage theme={theme} />
                 </PrivateRoute>
               }
             />
@@ -235,7 +252,7 @@ function App() {
       </ErrorBoundary>
 
       {/* Conditional Footer Rendering */}
-      {location.pathname !== '*' && <Footer />}
+      {location.pathname !== '*' && <Footer theme={theme} />}
     </div>
   );
 }
