@@ -3,13 +3,16 @@ import { auth } from './firebase';
 import { updateEmail, updatePassword } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import { Button, Form, Alert, Card } from 'react-bootstrap';
+import { Button, Form, Alert, Card, ProgressBar, Badge } from 'react-bootstrap';
+import Subscribe from './Subscribe'; // Import the Subscribe component
 
 const UserAccount = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [membership, setMembership] = useState('Free');
+  const [searchLimit, setSearchLimit] = useState(0);
+  const [searchesUsed, setSearchesUsed] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const user = auth.currentUser;
@@ -21,6 +24,8 @@ const UserAccount = () => {
       if (docSnap.exists()) {
         setPhone(docSnap.data().phone || '');
         setMembership(docSnap.data().membership || 'Free');
+        setSearchLimit(docSnap.data().searchLimit || 0);
+        setSearchesUsed(docSnap.data().searchesUsed || 0);
       }
     };
     fetchUserData();
@@ -39,7 +44,7 @@ const UserAccount = () => {
       const userRef = doc(db, 'users', user.uid);
       await updateDoc(userRef, {
         phone,
-        membership,
+        membership: membership.toLowerCase(), // Store membership in lowercase
       });
 
       setSuccess('Profile updated successfully!');
@@ -52,15 +57,37 @@ const UserAccount = () => {
 
   return (
     <div className="container mt-5">
-      <h2>My Account</h2>
-      <Card className="p-4 shadow">
+      <h2 className="mb-4">My Account</h2>
+      <Card className="p-4 shadow mb-4">
         <div className="mb-4">
           <h4>Membership Status</h4>
-          <div
-            className={`badge bg-${membership === 'Premium' ? 'warning' : 'secondary'}`}
+          <Badge
+            bg={
+              membership.toLowerCase() === 'premium'
+                ? 'warning'
+                : membership.toLowerCase() === 'business'
+                  ? 'info'
+                  : 'secondary'
+            }
+            className="fs-6"
           >
             {membership} Member
-          </div>
+          </Badge>
+        </div>
+
+        <div className="mb-4">
+          <h4>Search Usage</h4>
+          <ProgressBar
+            now={(searchesUsed / searchLimit) * 100}
+            label={`${searchesUsed}/${searchLimit}`}
+            variant={searchesUsed >= searchLimit ? 'danger' : 'success'}
+            className="mb-2"
+          />
+          <small>
+            {searchesUsed >= searchLimit
+              ? 'You have reached your search limit. Upgrade your plan for more searches.'
+              : `You have ${searchLimit - searchesUsed} searches remaining.`}
+          </small>
         </div>
 
         <Form onSubmit={handleSubmit}>
@@ -102,8 +129,15 @@ const UserAccount = () => {
           </Button>
         </Form>
       </Card>
+
+      {/* Subscription Plans Section */}
+      <Card className="p-4 shadow">
+        <h4 className="mb-4">Upgrade Your Membership</h4>
+        <Subscribe />
+      </Card>
     </div>
   );
 };
 
 export default UserAccount;
+
