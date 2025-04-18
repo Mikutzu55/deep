@@ -1,5 +1,5 @@
 // Enhanced Blog.js with futuristic design, mobile-friendly carousel, and hidden tags in main section
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Container,
   Row,
@@ -10,7 +10,7 @@ import {
   InputGroup,
   Badge,
 } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   FaSearch,
   FaPlus,
@@ -26,20 +26,62 @@ import {
   FaChevronLeft,
   FaChevronRight,
 } from 'react-icons/fa';
+import { auth, db } from './firebase';
+import {
+  getDoc,
+  doc,
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+} from 'firebase/firestore';
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
 
-const Blog = ({ isAdmin = false }) => {
+const Blog = () => {
   // State management
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [blogPosts, setBlogPosts] = useState([]);
+  const [featuredPosts, setFeaturedPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Add ref for carousel
   const carouselRef = useRef(null);
+  const navigate = useNavigate();
 
-  // Current date for the blog posts
-  const currentDate = '2025-04-13';
-  const currentTime = '15:47:58';
+  // Current date and time
+  const currentDate = '2025-04-18';
+  const currentTime = '10:54:01';
   const currentUser = 'Mikutzu55';
+
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        try {
+          const userRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userRef);
+
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            // Check if user has admin role
+            if (userData.role === 'admin') {
+              setIsAdmin(true);
+            }
+          }
+        } catch (error) {
+          console.error('Error checking admin status:', error);
+        }
+      }
+    };
+
+    checkAdminStatus();
+  }, []);
 
   // Sample categories
   const categories = [
@@ -65,8 +107,29 @@ const Blog = ({ isAdmin = false }) => {
     'Luxury',
   ];
 
-  // Sample featured/popular posts for the carousel
-  const featuredPosts = [
+  // Sample blog posts for fallback
+  const blogPostsData = [
+    {
+      id: '1',
+      title: 'The Future of Electric Vehicles and Autonomous Driving',
+      excerpt:
+        'Explore how AI and electric powertrains are revolutionizing the automotive industry...',
+      image:
+        'https://images.unsplash.com/photo-1593941707882-a56bbc451a1d?auto=format&fit=crop&w=800',
+      author: 'Alex Johnson',
+      date: currentDate,
+      createdAt: new Date(),
+      time: currentTime,
+      category: 'tech',
+      tags: ['Electric Vehicles', 'Technology', 'Performance'],
+      comments: 24,
+      reading_time: '7 min',
+    },
+    // ... other sample blog posts
+  ];
+
+  // Sample featured posts for fallback
+  const featuredPostsData = [
     {
       id: 'featured-1',
       title: 'The Revolutionary Impact of AI on Vehicle Diagnostics',
@@ -76,129 +139,65 @@ const Blog = ({ isAdmin = false }) => {
         'https://images.unsplash.com/photo-1560958089-b8a1929cea89?auto=format&fit=crop&w=1200&q=80',
       category: 'tech',
       date: currentDate,
+      createdAt: new Date(),
       time: currentTime,
       author: currentUser,
       tags: ['Technology', 'Repair'],
       featured: true,
     },
-    {
-      id: 'featured-2',
-      title: 'Top 10 Electric Vehicles of 2025: Range and Performance',
-      excerpt:
-        'The latest electric vehicles pushing the boundaries of range and performance...',
-      image:
-        'https://images.unsplash.com/photo-1554744512-d6c603f27c54?auto=format&fit=crop&w=1200&q=80',
-      category: 'reviews',
-      date: '2025-03-28',
-      author: 'Sophia Chen',
-      tags: ['Electric Vehicles', 'Performance'],
-      featured: true,
-    },
-    {
-      id: 'featured-3',
-      title: 'Vintage Restoration: Bringing Classic Cars Back to Life',
-      excerpt:
-        'Inside the meticulous process of restoring classic automobiles to their former glory...',
-      image:
-        'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=1200&q=80',
-      category: 'maintenance',
-      date: '2025-04-05',
-      author: 'Robert Martinez',
-      tags: ['Classic Cars', 'Repair'],
-      featured: true,
-    },
+    // ... other sample featured posts
   ];
 
-  // Sample regular blog posts
-  const blogPostsData = [
-    {
-      id: 1,
-      title: 'The Future of Electric Vehicles and Autonomous Driving',
-      excerpt:
-        'Explore how AI and electric powertrains are revolutionizing the automotive industry...',
-      image:
-        'https://images.unsplash.com/photo-1593941707882-a56bbc451a1d?auto=format&fit=crop&w=800',
-      author: 'Alex Johnson',
-      date: currentDate,
-      time: currentTime,
-      category: 'tech',
-      tags: ['Electric Vehicles', 'Technology', 'Performance'],
-      comments: 24,
-      reading_time: '7 min',
-    },
-    {
-      id: 2,
-      title: 'Classic Car Restoration: A Complete Guide',
-      excerpt:
-        'Learn the essential techniques for restoring vintage automobiles to their former glory...',
-      image:
-        'https://images.unsplash.com/photo-1532581140115-3e355d1ed1de?auto=format&fit=crop&w=800',
-      author: 'Maria Garcia',
-      date: '2025-04-10',
-      category: 'maintenance',
-      tags: ['Classic Cars', 'Car Care', 'DIY'],
-      comments: 18,
-      reading_time: '12 min',
-    },
-    {
-      id: 3,
-      title: 'Advanced Driver Assistance Systems: Safety Review',
-      excerpt:
-        'A comprehensive look at the latest safety technologies in modern vehicles...',
-      image:
-        'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=800',
-      author: 'James Wilson',
-      date: '2025-03-28',
-      category: 'reviews',
-      tags: ['Safety', 'Technology', 'Reviews'],
-      comments: 32,
-      reading_time: '9 min',
-    },
-    {
-      id: 4,
-      title: 'The Art of Automotive Design: Form and Function',
-      excerpt:
-        'Discover how car designers balance aesthetics with aerodynamics and engineering requirements...',
-      image:
-        'https://images.unsplash.com/photo-1603584173870-7f23fdae1b7a?auto=format&fit=crop&w=800',
-      author: 'Sophia Chen',
-      date: '2025-03-20',
-      category: 'news',
-      tags: ['Luxury', 'Performance', 'Technology'],
-      comments: 15,
-      reading_time: '8 min',
-    },
-    {
-      id: 5,
-      title: 'DIY Maintenance Tips to Extend Your Vehicle Lifespan',
-      excerpt:
-        'Simple maintenance routines that every car owner should know to keep their vehicle running smoothly...',
-      image:
-        'https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=800',
-      author: 'David Brown',
-      date: '2025-03-15',
-      category: 'maintenance',
-      tags: ['Car Care', 'DIY', 'Repair'],
-      comments: 42,
-      reading_time: '10 min',
-    },
-    {
-      id: 6,
-      title: 'Hydrogen vs Electric: The Future Fuel Debate',
-      excerpt:
-        'Analyzing the environmental impact and practicality of hydrogen fuel cells versus battery electric powertrains...',
-      image:
-        'https://images.unsplash.com/photo-1540465351121-37cad7d61a8f?auto=format&fit=crop&w=800',
-      author: currentUser,
-      date: '2025-03-05',
-      category: 'tech',
-      tags: ['Electric Vehicles', 'Technology', 'Performance'],
-      comments: 36,
-      reading_time: '11 min',
-    },
-  ];
+  // Fetch blog posts from Firestore
+  useEffect(() => {
+    const fetchBlogPosts = async () => {
+      setLoading(true);
+      try {
+        // Fetch regular posts
+        const postsQuery = query(
+          collection(db, 'blogPosts'),
+          orderBy('createdAt', 'desc'),
+          limit(20)
+        );
 
-  const [blogPosts, setBlogPosts] = useState(blogPostsData);
+        const postsSnapshot = await getDocs(postsQuery);
+
+        if (!postsSnapshot.empty) {
+          const fetchedPosts = postsSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setBlogPosts(fetchedPosts);
+
+          // Filter featured posts
+          const fetchedFeatured = fetchedPosts.filter(
+            (post) => post.featured === true
+          );
+
+          // Use fetched featured posts if available, otherwise use sample data
+          if (fetchedFeatured.length > 0) {
+            setFeaturedPosts(fetchedFeatured);
+          } else {
+            // Use top 3 most recent posts as featured if none marked as featured
+            setFeaturedPosts(fetchedPosts.slice(0, 3));
+          }
+        } else {
+          // If no posts in Firestore, use sample data
+          setBlogPosts(blogPostsData);
+          setFeaturedPosts(featuredPostsData);
+        }
+      } catch (error) {
+        console.error('Error fetching blog posts:', error);
+        // Fallback to sample data if fetch fails
+        setBlogPosts(blogPostsData);
+        setFeaturedPosts(featuredPostsData);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBlogPosts();
+  }, []);
 
   // Handle carousel scrolling
   const handleCarouselScroll = (direction) => {
@@ -211,14 +210,25 @@ const Blog = ({ isAdmin = false }) => {
     }
   };
 
+  // Navigate to blog post page
+  const navigateToPost = (postId) => {
+    navigate(`/blog/${postId}`);
+  };
+
+  // Create new post
+  const handleCreatePost = () => {
+    navigate('/blog/new');
+  };
+
   // Filter function for posts
   const filteredPosts = () => {
     return blogPosts.filter((post) => {
-      // Filter by search term
+      // Filter by search terma
       const matchesSearch =
         searchTerm === '' ||
         post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        post.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
+        (post.excerpt &&
+          post.excerpt.toLowerCase().includes(searchTerm.toLowerCase()));
 
       // Filter by category
       const matchesCategory =
@@ -227,7 +237,7 @@ const Blog = ({ isAdmin = false }) => {
       // Filter by tags
       const matchesTags =
         selectedTags.length === 0 ||
-        selectedTags.every((tag) => post.tags.includes(tag));
+        (post.tags && selectedTags.every((tag) => post.tags.includes(tag)));
 
       return matchesSearch && matchesCategory && matchesTags;
     });
@@ -291,34 +301,65 @@ const Blog = ({ isAdmin = false }) => {
 
         <div className="popular-posts-carousel-container">
           <div className="popular-posts-carousel" ref={carouselRef}>
-            {featuredPosts.map((post) => (
-              <div key={post.id} className="featured-post-card">
-                <div className="featured-post-image">
-                  <img src={post.image} alt={post.title} />
-                  <div className="featured-badge">
-                    <span>Featured</span>
+            {loading
+              ? // Loading skeletons for carousel
+                Array(3)
+                  .fill()
+                  .map((_, index) => (
+                    <div
+                      key={`skeleton-${index}`}
+                      className="featured-post-card"
+                    >
+                      <div className="featured-post-image">
+                        <Skeleton height={200} />
+                      </div>
+                      <div className="featured-post-content">
+                        <Skeleton width={80} height={24} />
+                        <Skeleton height={30} className="mt-2" />
+                        <Skeleton count={2} className="mt-2" />
+                        <Skeleton width={150} height={20} className="mt-3" />
+                      </div>
+                    </div>
+                  ))
+              : featuredPosts.map((post) => (
+                  <div
+                    key={post.id}
+                    className="featured-post-card"
+                    onClick={() => navigateToPost(post.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="featured-post-image">
+                      <img src={post.image} alt={post.title} />
+                      <div className="featured-badge">
+                        <span>Featured</span>
+                      </div>
+                    </div>
+                    <div className="featured-post-content">
+                      <Badge className="featured-category">
+                        {categories.find((cat) => cat.id === post.category)
+                          ?.name || post.category}
+                      </Badge>
+                      <h3 className="featured-post-title">{post.title}</h3>
+                      <p className="featured-post-excerpt">{post.excerpt}</p>
+                      <div className="featured-post-meta">
+                        <span className="featured-post-date">
+                          <FaRegClock />{' '}
+                          {post.date ||
+                            (post.createdAt &&
+                              new Date(
+                                post.createdAt.seconds * 1000
+                              ).toLocaleDateString())}
+                        </span>
+                        <span className="featured-post-author">
+                          <FaRegUser /> {post.author}
+                        </span>
+                      </div>
+                      <div className="featured-post-link">
+                        Read More <FaArrowRight />
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="featured-post-content">
-                  <Badge className="featured-category">
-                    {categories.find((cat) => cat.id === post.category)?.name}
-                  </Badge>
-                  <h3 className="featured-post-title">{post.title}</h3>
-                  <p className="featured-post-excerpt">{post.excerpt}</p>
-                  <div className="featured-post-meta">
-                    <span className="featured-post-date">
-                      <FaRegClock /> {post.date}
-                    </span>
-                    <span className="featured-post-author">
-                      <FaRegUser /> {post.author}
-                    </span>
-                  </div>
-                  <Link to={`/blog/${post.id}`} className="featured-post-link">
-                    Read More <FaArrowRight />
-                  </Link>
-                </div>
-              </div>
-            ))}
+                ))}
           </div>
         </div>
       </Container>
@@ -349,8 +390,12 @@ const Blog = ({ isAdmin = false }) => {
 
           <Col md={3} className="d-flex justify-content-end gap-2">
             {isAdmin && (
-              <Button as={Link} to="/blog/new" className="new-post-btn">
-                <FaPlus className="me-1" /> New Post
+              <Button
+                onClick={handleCreatePost}
+                className="new-post-btn"
+                variant="primary"
+              >
+                <FaPlus className="me-1" /> Create Post
               </Button>
             )}
           </Col>
@@ -447,23 +492,57 @@ const Blog = ({ isAdmin = false }) => {
 
       {/* Blog Posts Grid - Tags removed from main view */}
       <Container className="blog-posts-section">
-        {filteredPosts().length > 0 ? (
+        {loading ? (
+          // Loading skeletons for blog posts
+          <Row>
+            {Array(6)
+              .fill()
+              .map((_, index) => (
+                <Col key={`skeleton-post-${index}`} lg={6} className="mb-4">
+                  <Card className="blog-card glassmorphism-card">
+                    <div className="card-img-container">
+                      <Skeleton height={200} />
+                    </div>
+                    <Card.Body>
+                      <div className="card-meta">
+                        <Skeleton width={120} />
+                      </div>
+                      <Skeleton height={28} className="mt-2" />
+                      <Skeleton count={2} className="mt-2" />
+                      <div className="d-flex justify-content-between mt-3">
+                        <Skeleton width={100} />
+                        <Skeleton width={80} />
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              ))}
+          </Row>
+        ) : filteredPosts().length > 0 ? (
           <Row>
             {filteredPosts().map((post) => (
               <Col key={post.id} lg={6} className="mb-4">
-                <Card className="blog-card glassmorphism-card hover-zoom">
+                <Card
+                  className="blog-card glassmorphism-card hover-zoom"
+                  onClick={() => navigateToPost(post.id)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <div className="card-img-container">
                     <Card.Img variant="top" src={post.image} alt={post.title} />
                     <div className="card-category-badge">
                       <Badge>
-                        {
-                          categories.find((cat) => cat.id === post.category)
-                            ?.name
-                        }
+                        {categories.find((cat) => cat.id === post.category)
+                          ?.name || post.category}
                       </Badge>
                     </div>
                     <div className="card-bookmark-btn">
-                      <Button variant="link">
+                      <Button
+                        variant="link"
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent card click event
+                          // Add bookmark functionality here
+                        }}
+                      >
                         <FaRegBookmark />
                       </Button>
                     </div>
@@ -471,10 +550,15 @@ const Blog = ({ isAdmin = false }) => {
                   <Card.Body>
                     <div className="card-meta">
                       <span className="card-date">
-                        <FaRegClock /> {post.date}
+                        <FaRegClock />{' '}
+                        {post.date ||
+                          (post.createdAt &&
+                            new Date(
+                              post.createdAt.seconds * 1000
+                            ).toLocaleDateString())}
                       </span>
                       <span className="card-reading-time">
-                        {post.reading_time} read
+                        {post.reading_time || '5 min read'}
                       </span>
                     </div>
                     <Card.Title className="blog-card-title">
@@ -483,27 +567,44 @@ const Blog = ({ isAdmin = false }) => {
                     <Card.Text className="blog-card-excerpt">
                       {post.excerpt}
                     </Card.Text>
-                    {/* Tags removed from the main view */}
                     <div className="card-footer-meta">
                       <div className="author-info">
                         <div className="author-avatar">
-                          <span>{post.author.charAt(0)}</span>
+                          <span>
+                            {post.author ? post.author.charAt(0) : 'A'}
+                          </span>
                         </div>
                         <span className="author-name">{post.author}</span>
                       </div>
                       <div className="card-actions">
-                        <Button variant="link" className="comment-btn">
-                          <FaRegComment /> <span>{post.comments}</span>
+                        <Button
+                          variant="link"
+                          className="comment-btn"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent card click event
+                            // Comments functionality here
+                          }}
+                        >
+                          <FaRegComment /> <span>{post.comments || 0}</span>
                         </Button>
-                        <Button variant="link" className="share-btn">
+                        <Button
+                          variant="link"
+                          className="share-btn"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent card click event
+                            // Share functionality here
+                          }}
+                        >
                           <FaShare />
                         </Button>
                         {isAdmin && (
                           <Button
-                            as={Link}
-                            to={`/blog/edit/${post.id}`}
                             variant="link"
                             className="edit-btn"
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent card click event
+                              navigate(`/blog/edit/${post.id}`);
+                            }}
                           >
                             <i className="fas fa-edit"></i>
                           </Button>
@@ -511,11 +612,6 @@ const Blog = ({ isAdmin = false }) => {
                       </div>
                     </div>
                   </Card.Body>
-                  <Link to={`/blog/${post.id}`} className="card-overlay-link">
-                    <span className="visually-hidden">
-                      Read more about {post.title}
-                    </span>
-                  </Link>
                 </Card>
               </Col>
             ))}
@@ -580,4 +676,5 @@ const Blog = ({ isAdmin = false }) => {
 };
 
 export default Blog;
+
 
