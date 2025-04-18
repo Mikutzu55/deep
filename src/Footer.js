@@ -1,11 +1,15 @@
 import React from 'react';
 
-const Footer = () => {
+const Footer = ({ theme }) => {
+  const isLightTheme = theme === 'light';
+
   return (
     <footer
       style={{
-        backgroundImage: 'linear-gradient(120deg, #333333, #555555)',
-        color: '#ffffff',
+        backgroundImage: isLightTheme
+          ? 'linear-gradient(120deg, #e9f5ff, #d1e7fd)' // Soft pastel blue gradient
+          : 'linear-gradient(120deg, #2c5282, #1a202c)', // Dark theme gradient
+        color: isLightTheme ? '#333333' : '#e2e8f0', // Text color based on theme
         padding: '3rem 1rem',
         textAlign: 'center',
         fontFamily: "'Poppins', sans-serif",
@@ -43,8 +47,8 @@ const Footer = () => {
             fontSize: '1.8rem',
             fontWeight: 'bold',
             marginBottom: '10px',
-            color: '#007bff', // Blue accent to match the website theme
-            textShadow: '0 0 15px #007bff',
+            color: isLightTheme ? '#0d6efd' : '#4299e1', // Accent color for logo
+            textShadow: isLightTheme ? '0 0 10px #e9f5ff' : '0 0 15px #4299e1',
             letterSpacing: '2px',
           }}
         >
@@ -64,7 +68,7 @@ const Footer = () => {
               key={index}
               href={`/${link.toLowerCase().replace(' ', '-')}`}
               style={{
-                color: '#007bff', // Blue accent
+                color: isLightTheme ? '#0d6efd' : '#4299e1', // Link color
                 textDecoration: 'none',
                 transition: 'color 0.3s ease, transform 0.3s ease',
                 fontSize: '1rem',
@@ -75,7 +79,7 @@ const Footer = () => {
                 e.target.style.transform = 'scale(1.1)';
               }}
               onMouseOut={(e) => {
-                e.target.style.color = '#007bff';
+                e.target.style.color = isLightTheme ? '#0d6efd' : '#4299e1';
                 e.target.style.transform = 'scale(1)';
               }}
             >
@@ -103,10 +107,12 @@ const Footer = () => {
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                color: '#007bff', // Blue accent
+                color: isLightTheme ? '#0d6efd' : '#4299e1', // Icon color
                 fontSize: '1.5rem',
                 transition: 'transform 0.3s ease, color 0.3s ease',
-                textShadow: '0 0 10px #007bff',
+                textShadow: isLightTheme
+                  ? '0 0 5px #e9f5ff'
+                  : '0 0 10px #4299e1',
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.transform = 'scale(1.2)';
@@ -114,7 +120,9 @@ const Footer = () => {
               }}
               onMouseOut={(e) => {
                 e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.textShadow = '0 0 10px #007bff';
+                e.currentTarget.style.textShadow = isLightTheme
+                  ? '0 0 5px #e9f5ff'
+                  : '0 0 10px #4299e1';
               }}
             >
               <i className={icon}></i>
@@ -128,6 +136,7 @@ const Footer = () => {
             fontSize: '0.9rem',
             opacity: '0.8',
             letterSpacing: '1px',
+            color: isLightTheme ? '#555555' : '#cbd5e0', // Subtle text color
           }}
         >
           © {new Date().getFullYear()} My Car Website. All rights reserved.
@@ -138,3 +147,4 @@ const Footer = () => {
 };
 
 export default Footer;
+
