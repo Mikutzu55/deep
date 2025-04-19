@@ -55,7 +55,7 @@ p {
   --footer-text: #ffffff;
   --footer-link: #0288d1; /* Lighter blue for links */
   --footer-link-hover: #ffffff;
-  --accent-color: #0288d1; /* Vibrant blue as primary accent */
+  --accent-color: #01579b; /* Vibrant blue as primary accent */
   --accent-color-rgb: 2, 136, 209;
   --border-color: #eaefff; /* Softer border for subtle distinction */
   --hero-gradient: linear-gradient(135deg, #f8fafc 0%, #e6f2ff 100%);
@@ -2141,3 +2141,4 @@ footer {
     font-size: 0.9rem;
   }
 }
+
